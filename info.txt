@@ -1,0 +1,123 @@
+nodemon은 global하게 설치해야한다.
+
+
+express-sanitizer 사용법
+https://www.npmjs.com/package/express-sanitizer
+
+connect-flash 사용법 
+https://m.blog.naver.com/rwans0397/220680181786
+
+request 사용법
+https://www.npmjs.com/package/request
+
+express 촤신버전 유지
+npm uninstall express
+npm install express 
+
+참고할만한 데이터 구조 - 1 
+var mongoose = require("mongoose");
+
+//모델 설정(schema) Schema setup
+var campgroundSchema = new mongoose.Schema({
+  name: String,
+  price: String,
+  image: String,
+  description: String,
+  author: {
+    id: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User"
+    },
+    username: String
+  },
+  comments: [
+    {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Comment" //model
+    }
+  ]
+});
+
+module.exports = mongoose.model("Campground", campgroundSchema);
+
+참고할만한 데이터 구조 - 2
+
+var mongoose = require("mongoose");
+
+var commentSchema = new mongoose.Schema({
+  text: String,
+  author: {
+    id: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User"
+    },
+    username: String
+  }
+});
+
+module.exports = mongoose.model("Comment", commentSchema);
+
+미들웨어 Examples 
+
+//all the middleware goes here
+var middlewareObj = {};
+var Campground = require("../models/Campground");
+var Comment = require("../models/Comment");
+
+middlewareObj.checkCampgroundOwnership = function(req, res, next) {
+  // is user logged in ?
+  if (req.isAuthenticated()) {
+    //does user own the campground?
+    Campground.findById(req.params.id, function(err, foundCampground) {
+      if (err) {
+        req.flash("error", "Campground not found");
+        res.redirect("back");
+      } else {
+        // does user own the campground?
+        if (foundCampground.author.id.equals(req.user._id)) {
+          next();
+        } else {
+          req.flash("error", "You don't have permission to do that");
+          res.redirect("back");
+        }
+      }
+    });
+  } else {
+    req.flash("error", "You need to be logged in to do that");
+    res.redirect("back");
+  }
+};
+
+middlewareObj.checkCommentOwnership = function(req, res, next) {
+  // is user logged in ?
+  if (req.isAuthenticated()) {
+    //does user own the campground?
+    Comment.findById(req.params.comment_id, function(err, foundComment) {
+      if (err) {
+        res.redirect("back");
+      } else {
+        // does user own the campground?
+        if (foundComment.author.id.equals(req.user._id)) {
+          next();
+        } else {
+          req.flash("error", "You don't have permission to do that");
+          res.redirect("back");
+        }
+      }
+    });
+  } else {
+    req.flash("error", "You need to be logged in to do that");
+    res.redirect("back");
+  }
+};
+
+middlewareObj.isLoggedIn = function(req, res, next) {
+  //req.isAuthenticated also comes from `passport`
+  if (req.isAuthenticated()) {
+    return next();
+  }
+  req.flash("error", "You need to be logged in to do that!");
+  res.redirect("/login");
+};
+
+module.exports = middlewareObj;
